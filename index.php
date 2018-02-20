@@ -3,6 +3,7 @@
     todo:
     ajax
     url encode all inputs (mostly subject)
+Add grouping button
 
 
 -->
