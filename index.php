@@ -149,6 +149,16 @@ if (isset($_POST['submitVotes'])) {
             </td>
         </tr>
 
+        <tr>
+            <td colspan="3">
+                <br>
+                In the xxx retrospective, the following users have contributed: xxx, yyy<br>
+                It was created xx.yy.zzz, and last contribution was made xx.yy.zzzz
+                <br>
+                <br>
+            </td>
+        </tr>
+
 
         <tr>
             <td>
@@ -195,10 +205,11 @@ if (isset($_POST['submitVotes'])) {
         $result = $conn->query("SELECT id, subject, subjects.name, subjects.datetime, count(subjectId) FROM subjects LEFT JOIN votes ON subjects.id = votes.subjectId WHERE retrospective = '" . $_POST["retrospective"] . "' AND category = '" . $row["category"] . "' AND subject != '' group by subject order by count(subjectId) desc");
         while ($row = $result->fetch_assoc()) {
             echo "
-                <div  title='" . $row["name"] . " - " . $row["datetime"] . "'>"
+                <div title='" . $row["datetime"] . "'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
                 . $row["count(subjectId)"]
-                . "<input type='checkbox' name='voteCheckbox[]' value='" . $row["id"] . "'>"
+                . "&nbsp;<input type='checkbox' name='voteCheckbox[]' value='" . $row["id"] . "'>&nbsp;"
                 . $row["subject"]
+                . " <i>(" . $row["name"] . "</i>)"
                 . "</div>";
         }
     }
@@ -219,7 +230,7 @@ $conn->close();
 
 <div style="position: fixed; left: 0; bottom: 0; width: 100%; text-align: center;">
     <hr>
-    less is more - alsk@nykredit.dk
+    less is more
 </div>
 </body>
 </html>
