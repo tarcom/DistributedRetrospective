@@ -1,5 +1,5 @@
 <!doctype html>
-
+<link href="./style.css" rel="stylesheet" type="text/css" />
 
 <html>
 <head>
@@ -7,6 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <meta name="description" content="simpel distributed retrospective">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Allan Nørgaard Skov" />
 
     <title>Simple Distributed Retrospective</title>
 
