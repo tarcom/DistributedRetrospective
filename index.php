@@ -1,12 +1,4 @@
 <!doctype html>
-<!--
-    todo:
-    ajax
-    url encode all inputs (mostly subject)
-Add grouping button
-
-
--->
 
 
 <html>
@@ -37,6 +29,15 @@ Add grouping button
 
 
 <?php
+
+
+//strip funny chars:
+if (isset($_POST["subject"])) $_POST["subject"] = str_replace("'", "\"", htmlspecialchars($_POST["subject"]));
+if (isset($_POST["newRetrospective"]))$_POST["newRetrospective"] = str_replace("'", "\"", htmlspecialchars($_POST["newRetrospective"]));
+if (isset($_POST["newUsername"]))$_POST["newUsername"] = str_replace("'", "\"", htmlspecialchars($_POST["newUsername"]));
+if (isset($_POST["groupNote"]))$_POST["groupNote"] = str_replace("'", "\"", htmlspecialchars($_POST["groupNote"]));
+
+
 
 //add subjects:
 if (isset($_POST['yourName']) && isset($_POST['subject'])) {
@@ -85,8 +86,22 @@ if (isset($_POST['submitVotes'])) {
             $result = mysqli_query($conn, $sql);
         }
     }
-
 }
+
+
+
+//Group items:
+if (isset($_POST['groupItems'])) {
+
+    if (isset($_POST["voteCheckbox"])) {
+        foreach ($_POST["voteCheckbox"] as &$value) {
+            $sql = "update subjects set category = '" . $_POST["groupItemsCategory"] . "',  subject = CONCAT('(GROUP: " . $_POST["groupNote"] . ") ', subject) where id = " . $value;
+            $result = mysqli_query($conn, $sql);
+        }
+    }
+}
+
+
 
 
 ?>
@@ -97,10 +112,10 @@ if (isset($_POST['submitVotes'])) {
     <table border="0">
         <tr>
             <td>
-                Select retrospective:
+                Select a retrospective:
             </td>
             <td>
-                <select name="retrospective" style="width:200px;">
+                <select name="retrospective" style="width:200px;" onchange='this.form.submit()'>
                     <?php
                     $retrospectiveResult = $conn->query("SELECT distinct retrospective FROM subjects order by datetime desc");
                     while ($row = $retrospectiveResult->fetch_assoc()) {
@@ -127,7 +142,7 @@ if (isset($_POST['submitVotes'])) {
                 Select your username:
             </td>
             <td>
-                <select name="yourName" style="width:200px;">
+                <select name="yourName" style="width:200px;" onchange='this.form.submit()'>
                     <?php
                     $retrospectiveResult = $conn->query("SELECT distinct name FROM subjects where name != '' order by name asc");
                     while ($row = $retrospectiveResult->fetch_assoc()) {
@@ -149,12 +164,9 @@ if (isset($_POST['submitVotes'])) {
             </td>
         </tr>
 
+
         <tr>
             <td colspan="3">
-                <br>
-                In the xxx retrospective, the following users have contributed: xxx, yyy<br>
-                It was created xx.yy.zzz, and last contribution was made xx.yy.zzzz
-                <br>
                 <br>
             </td>
         </tr>
@@ -186,26 +198,72 @@ if (isset($_POST['submitVotes'])) {
             </td>
         </tr>
 
-    </table>
-    <input type="submit" value="Submit subject / refresh screen">
+        <tr>
+            <td></td>
+            <td>
+                <input type="submit" value="Submit subject / refresh screen">
+            </td>
+            <td></td>
+        </tr>
 
+
+    </table>
+    <br>
 
     <hr>
+
+    In this retrospective (<b><?= $_POST["retrospective"] ?></b>), the following users have contributed:
+
+    <?php
+    $sql = "SELECT distinct(name) FROM subjects where retrospective = '" . $_POST["retrospective"] . "' order by name";
+    $result = mysqli_query($conn, $sql);
+    while ($row = $result->fetch_assoc()) {
+        echo "<b>" . $row["name"] . "</b>, ";
+    }
+    ?>
+
+
+    <br>
+    It was created
+    <?php
+    $sql = "select MIN(datetime), MAX(datetime) from subjects where retrospective = '" . $_POST["retrospective"] . "' order by name";
+    $result = mysqli_query($conn, $sql);
+    while ($row = $result->fetch_assoc()) {
+        echo "<b>" . $row["MIN(datetime)"] . "</b>";
+        echo ", and last contribution was made";
+        echo "<b> " . $row["MAX(datetime)"] . "</b>";
+    }
+    ?>
+
+
+    <br>
+    <br>
 
     <?php
 
     //first search all categories:
     $categoryResult =
-        $conn->query("SELECT distinct category FROM subjects WHERE retrospective = '" . $_POST["retrospective"] . "' AND subject != '' order by datetime");
+        $conn->query("SELECT distinct category FROM subjects WHERE retrospective = '" . $_POST["retrospective"] .
+            "' AND subject != '' order by datetime");
     while ($row = $categoryResult->fetch_assoc()) {
         echo "<h3>" . $row["category"] . "</h3>";
 
         //then for each category, execute the actual search query:
 //      $result = $conn->query("SELECT * FROM subjects WHERE retrospective = '" . $_POST["retrospective"] . "' AND category = '" . $row["category"] . "'");
-        $result = $conn->query("SELECT id, subject, subjects.name, subjects.datetime, count(subjectId) FROM subjects LEFT JOIN votes ON subjects.id = votes.subjectId WHERE retrospective = '" . $_POST["retrospective"] . "' AND category = '" . $row["category"] . "' AND subject != '' group by subject order by count(subjectId) desc");
+        $result =
+            $conn->query("SELECT id, subject, subjects.name, subjects.datetime, count(subjectId) FROM subjects LEFT JOIN votes ON subjects.id = votes.subjectId WHERE retrospective = '" .
+                $_POST["retrospective"] . "' AND category = '" . $row["category"] .
+                "' AND subject != '' group by subject order by count(subjectId) desc");
         while ($row = $result->fetch_assoc()) {
+
+            $personsVoted = "";
+            $voteResult = $conn->query("SELECT name FROM `votes` WHERE subjectId = " . $row["id"]);
+            while ($rowPersonsVoted = $voteResult->fetch_assoc()) {
+                $personsVoted = $personsVoted . $rowPersonsVoted["name"] . ", ";
+            }
+
             echo "
-                <div title='" . $row["datetime"] . "'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+                <div title='$personsVoted voted on this subject. Subject created: " . $row["datetime"] . " with id=" . $row["id"] . "'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
                 . $row["count(subjectId)"]
                 . "&nbsp;<input type='checkbox' name='voteCheckbox[]' value='" . $row["id"] . "'>&nbsp;"
                 . $row["subject"]
@@ -218,7 +276,35 @@ if (isset($_POST['submitVotes'])) {
     ?>
 
     <br><br>
-    <input type="submit" value="Submit votes" name="submitVotes">
+    <table>
+        <tr>
+            <td>
+                Either
+            </td>
+            <td>
+                <input type="submit" value="Votes on the selected items" name="submitVotes" style="width:250px">
+            </td>
+        </tr>
+        <tr>
+            <td>
+                or
+            </td>
+            <td>
+                <input type="submit" value="Group the selected items" name="groupItems" style="width:250px"> into this category
+                <select name="groupItemsCategory" style="width:200px;">
+                    <option value="No category"></option>
+                    <option value="Start doing">Start doing</option>
+                    <option value="Stop doing">Stop doing</option>
+                    <option value="Keep doing">Keep doing</option>
+                    <option value="Do more of">Do more of</option>
+                    <option value="Do less of">Do less of</option>
+                </select>
+                with this group-note <input type="text" name="groupNote">
+            </td>
+        </tr>
+    </table>
+
+
 
 
 </form>
@@ -228,9 +314,9 @@ $conn->close();
 ?>
 
 
-<div style="position: fixed; left: 0; bottom: 0; width: 100%; text-align: center;">
-    <hr>
-    less is more
+<div style="position: fixed; left: 0; bottom: 0; width: 100%; text-align: right;">
+<!--    <hr>-->
+    - less is more -
 </div>
 </body>
 </html>
